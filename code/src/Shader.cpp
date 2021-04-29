@@ -104,7 +104,6 @@ void Shader::SetUp()
         GLuint vertex, fragment;
         vertex = compileShader(vShaderCode.c_str(), GL_VERTEX_SHADER, "vertexShader");
         fragment = compileShader(fShaderCode.c_str(), GL_FRAGMENT_SHADER, "fragmentShader");
-
         programID = glCreateProgram();
         glAttachShader(programID, vertex);
         glAttachShader(programID, fragment);
