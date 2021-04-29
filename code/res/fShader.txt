@@ -1,0 +1,9 @@
+#version 330
+in vec4 vert_wPos;
+out vec4 out_Color;
+void main() {
+//if(mod(mod(gl_FragCoord.x,2) + mod(gl_FragCoord.y,2),2) > 0.5){
+//  discard;
+//}
+out_Color = vec4(0.5,0.5,0.5, 0.1);
+}
