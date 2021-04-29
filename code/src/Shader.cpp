@@ -100,7 +100,6 @@ void Shader::StopUse()
 void Shader::SetUp()
 {
     if (type == 0) {
-
         GLuint vertex, fragment;
         vertex = compileShader(vShaderCode.c_str(), GL_VERTEX_SHADER, "vertexShader");
         fragment = compileShader(fShaderCode.c_str(), GL_FRAGMENT_SHADER, "fragmentShader");
