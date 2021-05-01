@@ -1,18 +1,20 @@
-#include <GL\glew.h>
-#include <glm\gtc\type_ptr.hpp>
-#include <glm\gtc\matrix_transform.hpp>
+//#include "Shader.h"
 #include <cstdio>
 #include <cassert>
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-#include <iostream>
 #include <glm/glm.hpp>
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_sdl_gl3.h>
-#include "Shader.h"
-
 #include "GL_framework.h"
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <GL\glew.h>
+#include <glm\gtc\type_ptr.hpp>
+#include <glm\gtc\matrix_transform.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -89,6 +91,7 @@ void GLmousecb(MouseEvent ev) {
 }
 
 //////////////////////////////////////////////////
+
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
 	GLuint shader = glCreateShader(shaderType);
 	glShaderSource(shader, 1, &shaderStr, NULL);
@@ -119,6 +122,7 @@ void linkProgram(GLuint program) {
 		delete[] buff;
 	}
 }
+
 
 ////////////////////////////////////////////////// AXIS
 namespace Axis {
@@ -241,23 +245,260 @@ float initZ;
 float angelFOV = 65.0f;
 
 float PI = 3.14159265359;
-Shader shader("res/vShader.txt","res/fShader.txt" );
+
+class Shader {
+	int type;
+	GLuint textureID;
+	std::string vShaderCode, fShaderCode, gShaderCode;
+
+public:
+	unsigned int programID;
+
+	Shader(const char* vertexPath, const char* fragmentPath)
+	{
+		type = 0;
+		std::string vertexCode;
+		std::string fragmentCode;
+		std::ifstream vShaderFile;
+		std::ifstream fShaderFile;
+		// ensure ifstream objects can throw exceptions:
+		vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		try
+		{
+			// open files
+			vShaderFile.open(vertexPath);
+			fShaderFile.open(fragmentPath);
+			std::stringstream vShaderStream, fShaderStream;
+			// read file's buffer contents into streams
+			vShaderStream << vShaderFile.rdbuf();
+			fShaderStream << fShaderFile.rdbuf();
+			// close file handlers
+			vShaderFile.close();
+			fShaderFile.close();
+			// convert stream into string
+			vertexCode = vShaderStream.str();
+			fragmentCode = fShaderStream.str();
+		}
+		catch (std::ifstream::failure& e)
+		{
+			std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+		}
+		vShaderCode = vertexCode.c_str();
+		fShaderCode = fragmentCode.c_str();
+	}
+
+	Shader(const char* vertexPath, const char* geometryPath, const char* fragmentPath)
+	{
+		type = 1;
+		std::string vertexCode;
+		std::string fragmentCode;
+		std::string geomtryCode;
+		std::ifstream vShaderFile;
+		std::ifstream fShaderFile;
+		std::ifstream gShaderFile;
+		// ensure ifstream objects can throw exceptions:
+		vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		try
+		{
+			// open files
+			vShaderFile.open(vertexPath);
+			fShaderFile.open(fragmentPath);
+			gShaderFile.open(geometryPath);
+			std::stringstream vShaderStream, fShaderStream, gShaderStream;
+			// read file's buffer contents into streams
+			vShaderStream << vShaderFile.rdbuf();
+			fShaderStream << fShaderFile.rdbuf();
+			gShaderStream << gShaderFile.rdbuf();
+			// close file handlers
+			vShaderFile.close();
+			fShaderFile.close();
+			gShaderFile.close();
+			// convert stream into string
+			vertexCode = vShaderStream.str();
+			fragmentCode = fShaderStream.str();
+			geomtryCode = gShaderStream.str();
+		}
+		catch (std::ifstream::failure& e)
+		{
+			std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+		}
+		vShaderCode = vertexCode.c_str();
+		fShaderCode = fragmentCode.c_str();
+		gShaderCode = geomtryCode.c_str();
+	}
+
+	void Use()
+	{
+		glUseProgram(programID);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	void StopUse()
+	{
+		glDisable(GL_BLEND);
+		glUseProgram(0);
+	}
+
+	void SetUp()
+	{
+		if (type == 0) {
+			GLuint vertex, fragment;
+			vertex = compileShader(vShaderCode.c_str(), GL_VERTEX_SHADER, "vertexShader");
+			fragment = compileShader(fShaderCode.c_str(), GL_FRAGMENT_SHADER, "fragmentShader");
+			programID = glCreateProgram();
+			glAttachShader(programID, vertex);
+			glAttachShader(programID, fragment);
+			glBindAttribLocation(programID, 0, "in_Position");
+			glBindAttribLocation(programID, 1, "in_Normal");
+			glBindAttribLocation(programID, 2, "in_UV");
+			linkProgram(programID);
+
+			glDeleteShader(vertex);
+			glDeleteShader(fragment);
+		}
+		else {
+
+			GLuint vertex, fragment, geometry;
+			vertex = compileShader(vShaderCode.c_str(), GL_VERTEX_SHADER, "vertexShader");
+			fragment = compileShader(fShaderCode.c_str(), GL_FRAGMENT_SHADER, "fragmentShader");
+			geometry = compileShader(gShaderCode.c_str(), GL_GEOMETRY_SHADER, "geometryShader");
+
+			programID = glCreateProgram();
+			glAttachShader(programID, vertex);
+			glAttachShader(programID, fragment);
+			glAttachShader(programID, geometry);
+			glBindAttribLocation(programID, 0, "in_Position");
+			glBindAttribLocation(programID, 1, "in_Normal");
+			glBindAttribLocation(programID, 2, "in_UV");
+			linkProgram(programID);
+
+			glDeleteShader(vertex);
+			glDeleteShader(fragment);
+			glDeleteShader(geometry);
+		}
+
+	}
+
+	void SetBool(const std::string& name, bool value)
+	{
+		glUniform1i(glGetUniformLocation(programID, name.c_str()), (int)value);
+	}
+
+	void SetInt(const std::string& name, int value)
+	{
+		glUniform1i(glGetUniformLocation(programID, name.c_str()), value);
+	}
+
+	void SetFloat(const std::string& name, float value)
+	{
+		glUniform1f(glGetUniformLocation(programID, name.c_str()), value);
+	}
+
+	void SetMatrix(const std::string& name, glm::mat4 value)
+	{
+		glUniformMatrix4fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+	}
+
+	void SetVector(const std::string& name, glm::vec4 value)
+	{
+		glUniform4f(glGetUniformLocation(programID, name.c_str()), value.x, value.y, value.z, value.w);
+	}
+
+	void SetTexture(const char* texturePath)
+	{
+		//Texture
+		glGenTextures(0, &textureID); // Create the handle of the texture
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		int x, y, n;
+		unsigned char* data = stbi_load(texturePath, &x, &y, &n, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);//Load the data
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
+		else
+		{
+			std::cout << "Failed to load texture" << std::endl;
+		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		stbi_image_free(data);
+		glDeleteTextures(0, &textureID);
+	}
+
+	void ActivateTexture()
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glUniform1i(glGetUniformLocation(programID, "Texture"), 0);
+	}
+
+	void CleanUp()
+	{
+	}
+
+	GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name)
+	{
+		GLuint shaderp = glCreateShader(shaderType);
+		glShaderSource(shaderp, 1, &shaderStr, NULL);
+		glCompileShader(shaderp);
+		GLint res;
+		glGetShaderiv(shaderp, GL_COMPILE_STATUS, &res);
+		if (res == GL_FALSE) {
+			glGetShaderiv(shaderp, GL_INFO_LOG_LENGTH, &res);
+			char* buff = new char[res];
+			glGetShaderInfoLog(shaderp, res, &res, buff);
+			fprintf(stderr, "Error Shader %s: %s", name, buff);
+			delete[] buff;
+			glDeleteShader(shaderp);
+			return 0;
+		}
+		return shaderp;
+	}
+
+	void linkProgram(GLuint program)
+	{
+		glLinkProgram(program);
+		GLint res;
+		glGetProgramiv(program, GL_LINK_STATUS, &res);
+		if (res == GL_FALSE) {
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &res);
+			char* buff = new char[res];
+			glGetProgramInfoLog(program, res, &res, buff);
+			fprintf(stderr, "Error Link: %s", buff);
+			delete[] buff;
+		}
+	}
+};
+
+
 ////////// Model class
 class Model {
 	GLuint modelVao;
 	GLuint modelVbo[3];
-	GLuint textureID;
+	Shader* shader;
 	glm::mat4 objMat;
 	glm::mat4 normalMat;
 	std::vector< glm::vec3 > verticesModel;
 	std::vector< glm::vec2 > uvsModel;
 	std::vector< glm::vec3 > normalsModel;
 	char* path;
+	char* texturePath;
 public:
-	Model(char* _path, glm::mat4 _mat) {
+	Model(char* _path, glm::mat4 _mat, Shader* _shader, char* _texturePath) {
 		path = _path;
 		objMat = _mat;
 		normalMat = glm::transpose(glm::inverse(_mat));
+		shader = _shader;
+		texturePath = _texturePath;
 	}
 
 	void setupModel() {
@@ -284,45 +525,21 @@ public:
 
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		shader->SetTexture(texturePath);
 
-		////Texture
-		//glGenTextures(0, &textureID); // Create the handle of the texture
-		//glBindTexture(GL_TEXTURE_2D, textureID);
-		//int x, y, n;
-		//unsigned char* data = stbi_load("res/wood.jpg", &x, &y, &n, 0);
-		//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);//Load the data
-		//if (data)
-		//{
-		//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		//	glGenerateMipmap(GL_TEXTURE_2D);
-		//}
-		//else
-		//{
-		//	std::cout << "Failed to load texture" << std::endl;
-		//}
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//stbi_image_free(data);
-		//glDeleteTextures(0, &textureID);
 
 	}
 	void cleanupModel() {
 		glDeleteBuffers(3, modelVbo);
 		glDeleteVertexArrays(1, &modelVao);
-		shader.CleanUp();
 	}
 	void updateModel(glm::mat4 transform) {
 		objMat = transform;
 	}
-	void drawModel() {
+	void drawModel(Shader* shader) {
 		glBindVertexArray(modelVao);
-		shader.Use();
+		shader->Use();
 		/*
-		glActiveTexture(GL_TEXTURE0); //
-		glBindTexture(GL_TEXTURE_2D, textureID);
-		glUniform1i(glGetUniformLocation(modelProgram, "cubeTexture"), 0);
 		glUniform4f(glGetUniformLocation(modelProgram, "ambientColor"), ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
 		glUniform1f(glGetUniformLocation(modelProgram, "ambientColorI"), ambientI);
 		glUniform4f(glGetUniformLocation(modelProgram, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.a);
@@ -338,44 +555,46 @@ public:
 ;
 		glUniform4f(glGetUniformLocation(modelProgram, "color"), color.x, color.y, color.z, color.w);
 		*/
-		//glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		shader.SetMatrix("objMat", objMat);
-		//glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		shader.SetMatrix("mv_Mat", RenderVars::_modelView);
-		//glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		shader.SetMatrix("mvpMat", RenderVars::_MVP);
-		//glUniformMatrix4fv(glGetUniformLocation(modelProgram, "nv_Mat"), 1, GL_FALSE, glm::value_ptr(normalMat));
-		shader.SetMatrix("nv_Mat", normalMat);
-		//glUniformMatrix4fv(glGetUniformLocation(modelProgram, "proj_Mat"), 1, GL_FALSE, glm::value_ptr(RV::_projection));
-		shader.SetMatrix("proj_Mat", RV::_projection);
+		shader->ActivateTexture();
+		shader->SetMatrix("objMat", objMat);
+		shader->SetMatrix("mv_Mat", RenderVars::_modelView);
+		shader->SetMatrix("mvpMat", RenderVars::_MVP);
+		shader->SetMatrix("nv_Mat", normalMat);
+		shader->SetMatrix("proj_Mat", RV::_projection);
 
 		glDrawArrays(GL_TRIANGLES, 0, verticesModel.size());
-		shader.StopUse();
+		shader->StopUse();
 		glBindVertexArray(0);
 	}
 };
 /////////////////////////////////////////////////
+//Shaders
+Shader phongShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 //Models
 //Main Model
-Model chest("res/Cube.obj", glm::mat4(1.0f));
-//Palm
-glm::mat4 tPalm = glm::translate(glm::mat4(), glm::vec3(-10.0f, 0.0f, 0.0f));
-glm::mat4 rPalm = glm::rotate(glm::mat4(), glm::radians(180.f), glm::vec3(0, 1, 0));
-glm::mat4 matPalm = tPalm * rPalm;
-Model palm("res/Palm.obj", matPalm);
-//Rock 1
-Model rock1("res/Rock.obj", glm::translate(glm::mat4(), glm::vec3(10.0f, 0.0f, 0.0f)));
-//Rock 2
-glm::mat4 tRock2 = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -10.0f));
-glm::mat4 sRock2 = glm::scale(glm::mat4(), glm::vec3(1.5f, 1.5f, 1.5f));
-glm::mat4 rRock2 = glm::rotate(glm::mat4(), glm::radians(270.f), glm::vec3(0, 1, 0));
-glm::mat4 matRock2 = tRock2 * sRock2 * rRock2;
-Model rock2("res/Rock.obj", matRock2);
-//Floor
-glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.5f,0.0f));
-glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
-glm::mat4 matcube1 = tcube1 * scube1;
-Model cube1("res/Cube.obj", matcube1);
+
+////Palm
+//glm::mat4 tPalm = glm::translate(glm::mat4(), glm::vec3(-10.0f, 0.0f, 0.0f));
+//glm::mat4 rPalm = glm::rotate(glm::mat4(), glm::radians(180.f), glm::vec3(0, 1, 0));
+//glm::mat4 matPalm = tPalm * rPalm;
+//Model palm("res/Palm.obj", matPalm, &palmShader,"res/Metal.png");
+
+Model chest("res/Cube.obj", glm::mat4(1.0f), &phongShader, "res/CubeTexture.png");
+////Rock 1
+//Model rock1("res/Rock.obj", glm::translate(glm::mat4(), glm::vec3(10.0f, 0.0f, 0.0f)));
+////Rock 2
+//glm::mat4 tRock2 = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -10.0f));
+//glm::mat4 sRock2 = glm::scale(glm::mat4(), glm::vec3(1.5f, 1.5f, 1.5f));
+//glm::mat4 rRock2 = glm::rotate(glm::mat4(), glm::radians(270.f), glm::vec3(0, 1, 0));
+//glm::mat4 matRock2 = tRock2 * sRock2 * rRock2;
+//Model rock2("res/Rock.obj", matRock2);
+////Floor
+//glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.5f,0.0f));
+//glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
+//glm::mat4 matcube1 = tcube1 * scube1;
+//Model cube1("res/Cube.obj", matcube1);
+
+
 
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
@@ -385,13 +604,16 @@ void GLinit(int width, int height) {
 	glEnable(GL_DEPTH_TEST);
 
 	// Setup shaders & geometry
-	shader.SetUp();
+	phongShader.SetUp();
+	//palmShader.SetUp();
 	Axis::setupAxis();
+
+	//cube1.setupModel();
 	chest.setupModel();
-	cube1.setupModel();
-	palm.setupModel();
-	rock1.setupModel();
-	rock2.setupModel();
+	//palm.setupModel();
+
+	//rock1.setupModel();
+	//rock2.setupModel();
 
 	w = width;
 	h = height;
@@ -401,11 +623,13 @@ void GLcleanup() {
 	Axis::cleanupAxis();
 	//Model::cleanupModel();
 	chest.cleanupModel();
-	cube1.cleanupModel();
-	palm.cleanupModel();
-	rock1.cleanupModel();
-	rock2.cleanupModel();
-	shader.CleanUp();
+	//cube1.cleanupModel();
+	//palm.cleanupModel();
+	//rock1.cleanupModel();
+	//rock2.cleanupModel();
+	//shader.CleanUp();
+	phongShader.CleanUp();
+	//palmShader.CleanUp();
 }
 
 void GLrender(float dt) {
@@ -420,9 +644,10 @@ void GLrender(float dt) {
 
 	cameraPos = glm::inverse(RV::_modelView) * glm::vec4(0,0,0,1);
 	Axis::drawAxis();
-	chest.drawModel();
+	//palm.drawModel(&palmShader);
+	chest.drawModel(&phongShader);
 	//cube1.drawModel();
-	//palm.drawModel();
+
 	//rock1.drawModel();
 	//rock2.drawModel();
 
