@@ -583,7 +583,7 @@ namespace Billboard {
 	GLuint BillboardVbo[2];
 	Shader BillboardShader("res/vShaderBillboard.txt","res/gShaderBillboard.txt" ,"res/fShaderBillboard.txt");
 	float BillboardVerts[] = {
-	0.0, 0.0, 0.0
+	5.0, -1.0, 2.0 //0.0, 0.0, 0.0
 	};
 	GLubyte BillboardIdx[] = {
 	0
@@ -630,7 +630,8 @@ namespace Billboard {
 
 Shader phongShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 
-Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/metal.png");
+Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/Metal.png");
+Model cube("res/cube.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/CubeTexture.jpg");
 
 
 void GLinit(int width, int height) {
@@ -679,10 +680,14 @@ void GLrender(float dt) {
 	Axis::drawAxis();
 	switch (ex)
 	{
-	case 0:
+	case 0: //Tree
 		Billboard::drawBillboard();
 		break;
-	case 1:
+	case 1: //Car
+		Billboard::drawBillboard();
+		car.drawModel(&phongShader, timer);
+		break;
+	case 2: //Cube
 		car.drawModel(&phongShader, timer);
 		break;
 	default:
@@ -700,8 +705,10 @@ void GUI() {
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::SliderInt("Exercice", &ex, 0, 1);
 		
-		if (ex == 1) {
-			ImGui::Checkbox("Explosion", &explosion);
+		if (ex == 1 || ex == 2) {
+			if (ex == 1) {
+				ImGui::Checkbox("Explosion", &explosion);
+			}
 			if (ImGui::CollapsingHeader("Phong")) {
 				if (ImGui::Button("Direccional Light"))
 				{
