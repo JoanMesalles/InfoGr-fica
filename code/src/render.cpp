@@ -580,37 +580,31 @@ public:
 
 namespace Billboard {
 	GLuint BillboardVao;
-	GLuint BillboardVbo[2];
+	GLuint BillboardVbo[1];
 	Shader BillboardShader("res/vShaderBillboard.txt","res/gShaderBillboard.txt" ,"res/fShaderBillboard.txt");
 	float BillboardVerts[] = {
-	5.0, -1.0, 2.0 //0.0, 0.0, 0.0
-	};
-	GLubyte BillboardIdx[] = {
-	0
+	5.0, -1.5, 0.0,
+	-5.0, -1.5, 0.0
 	};
 
 	void setupBillboard() {
 		glGenVertexArrays(1, &BillboardVao);
 		glBindVertexArray(BillboardVao);
-		glGenBuffers(2, BillboardVbo);
+		glGenBuffers(1, BillboardVbo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, BillboardVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3, BillboardVerts, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3, &BillboardVerts, GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(0);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BillboardVbo[1]);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLubyte) * 1, BillboardIdx, GL_STATIC_DRAW);
-
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		BillboardShader.SetUp();
 		BillboardShader.SetTexture("res/tree.png");
 
 	}
 	void cleanupBillboard() {
-		glDeleteBuffers(2, BillboardVbo);
+		glDeleteBuffers(1, BillboardVbo);
 		glDeleteVertexArrays(1, &BillboardVao);
 		BillboardShader.CleanUp();
 
@@ -629,9 +623,10 @@ namespace Billboard {
 }
 
 Shader phongShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
+Shader cubeShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 
 Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/Metal.png");
-Model cube("res/cube.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/CubeTexture.jpg");
+Model cube("res/cube2.obj", glm::rotate(glm::mat4(), glm::radians(90.f), glm::vec3(1, 0, 0)), &cubeShader, "res/cubeTexture4.png");
 
 
 void GLinit(int width, int height) {
@@ -643,10 +638,11 @@ void GLinit(int width, int height) {
 
 	// Setup shaders & geometry
 	phongShader.SetUp();
-	//palmShader.SetUp();
 	Axis::setupAxis();
 	Billboard::setupBillboard();
 	car.setupModel();
+	cubeShader.SetUp();
+	cube.setupModel();
 
 	w = width;
 	h = height;
@@ -656,6 +652,8 @@ void GLcleanup() {
 	Axis::cleanupAxis();
 	Billboard::cleanupBillboard();
 	car.cleanupModel();
+	cubeShader.CleanUp();
+	cube.cleanupModel();
 	phongShader.CleanUp();
 }
 
@@ -681,14 +679,16 @@ void GLrender(float dt) {
 	switch (ex)
 	{
 	case 0: //Tree
-		Billboard::drawBillboard();
+		//Billboard::drawBillboard();
+		cube.drawModel(&cubeShader, timer);
 		break;
 	case 1: //Car
 		Billboard::drawBillboard();
 		car.drawModel(&phongShader, timer);
+
 		break;
 	case 2: //Cube
-		car.drawModel(&phongShader, timer);
+		//car.drawModel(&phongShader, timer);
 		break;
 	default:
 		break;
@@ -753,43 +753,6 @@ void GUI() {
 			}
 
 		}
-
-		//Inicialize Dolly Effect
-		//if (ImGui::Button("Inversed Dolly effect"))
-		//{
-		//	//Reset camera Position and initial Fov
-		//	RV::panv[0] = { 0.f }; RV::panv[1] = { -3.f }; RV::panv[2] = { -15.f };
-		//	RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-		//	angelFOV = 20.0f;
-
-		//	if (ZoomEffect == false) { ZoomEffect = true; }
-		//	else if (ZoomEffect == true) 
-		//	{ 
-		//		ZoomEffect = false;
-		//		RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
-		//		RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-		//		RV::FOV = glm::radians(65.0f);
-		//	}
-		//}
-
-
-		//if (ZoomEffect == true) {
-
-		//	//Increase the distance 
-		//	RV::panv[2] -= 0.5f;
-		//	//Calculate the fov acording to the distance
-		//	RV::FOV = 2 * atan2(10.0f, 2 * abs(RV::panv[2]));
-
-		//	//Finish the animation when the camera gets too far
-		//	if (RV::panv[2] < -90.0f)
-		//	{
-		//		ZoomEffect = false;
-		//		RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
-		//		RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-		//		RV::FOV = glm::radians(65.0f);
-		//	}
-
-		//}
 	}
 
 	ImGui::End();
