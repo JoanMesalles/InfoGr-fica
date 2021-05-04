@@ -1,0 +1,26 @@
+#version 330
+layout(points) in;
+layout(triangle_strip, max_vertices = 5) out;
+uniform mat4 mvpMat;
+out vec2 v_UV;
+void Billboard(vec4 position){
+    gl_Position = position + vec4(-4.0, 0.0, 0.0, 0.0);
+    v_UV = vec2(0.0,1.0);	
+    EmitVertex();   
+    gl_Position = position + vec4( 4.0, 0.0, 0.0, 0.0); 
+    v_UV = vec2(1.0,1.0);
+    EmitVertex();
+    gl_Position = position + vec4(-4.0,  15.0, 0.0, 0.0);
+    v_UV = vec2(0.0,0.0);
+    EmitVertex();
+    gl_Position = position + vec4( 4.0,  15.0, 0.0, 0.0); 
+    v_UV = vec2(1.0,0.0);
+    EmitVertex();
+
+    EndPrimitive(); 
+}
+
+void main() {    
+    Billboard(gl_in[0].gl_Position);
+
+}

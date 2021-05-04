@@ -226,7 +226,7 @@ void main() {\n\
 glm::vec4 cameraPos = glm::vec4(0, 0, 0, 1);
 glm::vec4 lightPos = glm::vec4(0, 0, 0, 1);
 glm::vec4 pointingLight = glm::vec4(0, 0, 0, 1);
-glm::vec4 ligthDir = glm::vec4(-20.0f, 0, 0, 1);
+glm::vec4 ligthDir = glm::vec4(-20.0f, 0, 0, 1.0f);
 glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
 glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
 glm::mat4 attempt = glm::mat4(1);
@@ -237,6 +237,8 @@ float angle = 30.f;
 float ambientI = 0.5f;
 float diffuseI = 0.5f;
 glm::vec4 ambientColor = glm::vec4(1, 1, 1, 0);
+double timer;
+bool explosion = false;
 
 //Dolly Effect
 //Variables needed to do the dolly effect
@@ -250,10 +252,12 @@ class Shader {
 	int type;
 	GLuint textureID;
 	std::string vShaderCode, fShaderCode, gShaderCode;
-
+	GLenum format;
 public:
 	unsigned int programID;
+	Shader() {
 
+	}
 	Shader(const char* vertexPath, const char* fragmentPath)
 	{
 		type = 0;
@@ -412,26 +416,32 @@ public:
 	void SetTexture(const char* texturePath)
 	{
 		//Texture
-		glGenTextures(0, &textureID); // Create the handle of the texture
-		glBindTexture(GL_TEXTURE_2D, textureID);
+		glGenTextures(1, &textureID); // Create the handle of the texture
 		int x, y, n;
 		unsigned char* data = stbi_load(texturePath, &x, &y, &n, 0);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);//Load the data
 		if (data)
 		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			if (n == 1)
+				format = GL_RED;
+			else if (n == 3)
+				format = GL_RGB;
+			else if (n == 4)
+				format = GL_RGBA;
+			glBindTexture(GL_TEXTURE_2D, textureID);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			stbi_image_free(data);
+			glDeleteTextures(0, &textureID);
 		}
 		else
 		{
 			std::cout << "Failed to load texture" << std::endl;
 		}
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		stbi_image_free(data);
-		glDeleteTextures(0, &textureID);
+
 	}
 
 	void ActivateTexture()
@@ -536,64 +546,90 @@ public:
 	void updateModel(glm::mat4 transform) {
 		objMat = transform;
 	}
-	void drawModel(Shader* shader) {
+	void drawModel(Shader* shader, double currentTime) {
 		glBindVertexArray(modelVao);
 		shader->Use();
-		/*
-		glUniform4f(glGetUniformLocation(modelProgram, "ambientColor"), ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
-		glUniform1f(glGetUniformLocation(modelProgram, "ambientColorI"), ambientI);
-		glUniform4f(glGetUniformLocation(modelProgram, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.a);
-		glUniform4f(glGetUniformLocation(modelProgram, "lightDir"), ligthDir.x, ligthDir.y, ligthDir.z, 1.0f);
-		glUniform4f(glGetUniformLocation(modelProgram, "lightPos"), lightPos.x, lightPos.y, lightPos.z, 1.0f);
-		glUniform4f(glGetUniformLocation(modelProgram, "CameraPos"), cameraPos.x, cameraPos.y, cameraPos.z, cameraPos.w);
-		glUniform4f(glGetUniformLocation(modelProgram, "lightPointing"), pointingLight.x, pointingLight.y, pointingLight.z, 1.0f);
-		glUniform1f(glGetUniformLocation(modelProgram, "diffuseIntensity"), diffuseI);
-		glUniform1f(glGetUniformLocation(modelProgram, "outterCuttOff"), glm::cos(glm::radians(-angle - fadeAmount)));
-		glUniform1f(glGetUniformLocation(modelProgram, "cuttOff"), glm::cos(glm::radians(angle)));
-		glUniform1f(glGetUniformLocation(modelProgram, "lightIntensity"), lightIntesity);
-		glUniform1f(glGetUniformLocation(modelProgram, "mode"), mode);
-;
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), color.x, color.y, color.z, color.w);
-		*/
 		shader->ActivateTexture();
 		shader->SetMatrix("objMat", objMat);
 		shader->SetMatrix("mv_Mat", RenderVars::_modelView);
 		shader->SetMatrix("mvpMat", RenderVars::_MVP);
 		shader->SetMatrix("nv_Mat", normalMat);
 		shader->SetMatrix("proj_Mat", RV::_projection);
+		shader->SetVector("ambientColor", ambientColor);
+		shader->SetFloat("ambientColorI", ambientI);
+		shader->SetVector("lightColor", lightColor);
+		shader->SetVector("lightDir", ligthDir);
+		shader->SetVector("lightPos", lightPos);
+		shader->SetVector("CameraPos", cameraPos);
+		shader->SetVector("lightPointing", pointingLight);
+		shader->SetFloat("diffuseIntensity", diffuseI);
+		shader->SetFloat("outterCuttOff", glm::cos(glm::radians(-angle - fadeAmount)));
+		shader->SetFloat("cuttOff", glm::cos(glm::radians(angle)));
+		shader->SetFloat("lightIntensity", lightIntesity);
+		shader->SetFloat("time", currentTime);
+		shader->SetFloat("mode", mode);
+		shader->SetVector("color", color);
+		shader->SetBool("explosion", explosion);
 
 		glDrawArrays(GL_TRIANGLES, 0, verticesModel.size());
 		shader->StopUse();
 		glBindVertexArray(0);
 	}
 };
-/////////////////////////////////////////////////
-//Shaders
+
+namespace Billboard {
+	GLuint BillboardVao;
+	GLuint BillboardVbo[2];
+	Shader BillboardShader("res/vShaderBillboard.txt","res/gShaderBillboard.txt" ,"res/fShaderBillboard.txt");
+	float BillboardVerts[] = {
+	0.0, 0.0, 0.0
+	};
+	GLubyte BillboardIdx[] = {
+	0
+	};
+
+	void setupBillboard() {
+		glGenVertexArrays(1, &BillboardVao);
+		glBindVertexArray(BillboardVao);
+		glGenBuffers(2, BillboardVbo);
+
+		glBindBuffer(GL_ARRAY_BUFFER, BillboardVbo[0]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3, BillboardVerts, GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BillboardVbo[1]);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLubyte) * 1, BillboardIdx, GL_STATIC_DRAW);
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		BillboardShader.SetUp();
+		BillboardShader.SetTexture("res/tree.png");
+
+	}
+	void cleanupBillboard() {
+		glDeleteBuffers(2, BillboardVbo);
+		glDeleteVertexArrays(1, &BillboardVao);
+		BillboardShader.CleanUp();
+
+	}
+	void drawBillboard() {
+		glBindVertexArray(BillboardVao);
+		BillboardShader.Use();
+		BillboardShader.ActivateTexture();
+		BillboardShader.SetMatrix("mvpMat", RenderVars::_MVP);
+		glDrawArrays(GL_POINTS, 0, 4);
+
+		BillboardShader.StopUse();
+		glBindVertexArray(0);
+	}
+
+}
+
 Shader phongShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
-//Models
-//Main Model
 
-////Palm
-//glm::mat4 tPalm = glm::translate(glm::mat4(), glm::vec3(-10.0f, 0.0f, 0.0f));
-//glm::mat4 rPalm = glm::rotate(glm::mat4(), glm::radians(180.f), glm::vec3(0, 1, 0));
-//glm::mat4 matPalm = tPalm * rPalm;
-//Model palm("res/Palm.obj", matPalm, &palmShader,"res/Metal.png");
-
-Model chest("res/Cube.obj", glm::mat4(1.0f), &phongShader, "res/CubeTexture.png");
-////Rock 1
-//Model rock1("res/Rock.obj", glm::translate(glm::mat4(), glm::vec3(10.0f, 0.0f, 0.0f)));
-////Rock 2
-//glm::mat4 tRock2 = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -10.0f));
-//glm::mat4 sRock2 = glm::scale(glm::mat4(), glm::vec3(1.5f, 1.5f, 1.5f));
-//glm::mat4 rRock2 = glm::rotate(glm::mat4(), glm::radians(270.f), glm::vec3(0, 1, 0));
-//glm::mat4 matRock2 = tRock2 * sRock2 * rRock2;
-//Model rock2("res/Rock.obj", matRock2);
-////Floor
-//glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.5f,0.0f));
-//glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
-//glm::mat4 matcube1 = tcube1 * scube1;
-//Model cube1("res/Cube.obj", matcube1);
-
+Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/metal.png");
 
 
 void GLinit(int width, int height) {
@@ -607,13 +643,8 @@ void GLinit(int width, int height) {
 	phongShader.SetUp();
 	//palmShader.SetUp();
 	Axis::setupAxis();
-
-	//cube1.setupModel();
-	chest.setupModel();
-	//palm.setupModel();
-
-	//rock1.setupModel();
-	//rock2.setupModel();
+	Billboard::setupBillboard();
+	car.setupModel();
 
 	w = width;
 	h = height;
@@ -621,18 +652,19 @@ void GLinit(int width, int height) {
 
 void GLcleanup() {
 	Axis::cleanupAxis();
-	//Model::cleanupModel();
-	chest.cleanupModel();
-	//cube1.cleanupModel();
-	//palm.cleanupModel();
-	//rock1.cleanupModel();
-	//rock2.cleanupModel();
-	//shader.CleanUp();
+	Billboard::cleanupBillboard();
+	car.cleanupModel();
 	phongShader.CleanUp();
-	//palmShader.CleanUp();
 }
 
 void GLrender(float dt) {
+	if (explosion == false) {
+		timer = 0;
+	}
+	else {
+		timer += dt;
+	}
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	RV::_projection = glm::perspective(RV::FOV, (float)w / (float)h, RV::zNear, RV::zFar);
 	RV::_modelView = glm::mat4(1.f);
@@ -644,13 +676,7 @@ void GLrender(float dt) {
 
 	cameraPos = glm::inverse(RV::_modelView) * glm::vec4(0,0,0,1);
 	Axis::drawAxis();
-	//palm.drawModel(&palmShader);
-	chest.drawModel(&phongShader);
-	//cube1.drawModel();
-
-	//rock1.drawModel();
-	//rock2.drawModel();
-
+	car.drawModel(&phongShader, timer);
 	ImGui::Render();
 }
 
@@ -660,6 +686,7 @@ void GUI() {
 
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::Checkbox("Explosion", &explosion);
 
 		if (ImGui::Button("Direccional Light"))
 		{
@@ -683,60 +710,59 @@ void GUI() {
 
 		}
 		//Inicialize Dolly Effect
-		if (ImGui::Button("Inversed Dolly effect"))
-		{
-			//Reset camera Position and initial Fov
-			RV::panv[0] = { 0.f }; RV::panv[1] = { -3.f }; RV::panv[2] = { -15.f };
-			RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-			angelFOV = 20.0f;
+		//if (ImGui::Button("Inversed Dolly effect"))
+		//{
+		//	//Reset camera Position and initial Fov
+		//	RV::panv[0] = { 0.f }; RV::panv[1] = { -3.f }; RV::panv[2] = { -15.f };
+		//	RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
+		//	angelFOV = 20.0f;
 
-			if (ZoomEffect == false) { ZoomEffect = true; }
-			else if (ZoomEffect == true) 
-			{ 
-				ZoomEffect = false;
-				RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
-				RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-				RV::FOV = glm::radians(65.0f);
-			}
-		}
+		//	if (ZoomEffect == false) { ZoomEffect = true; }
+		//	else if (ZoomEffect == true) 
+		//	{ 
+		//		ZoomEffect = false;
+		//		RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
+		//		RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
+		//		RV::FOV = glm::radians(65.0f);
+		//	}
+		//}
 		if (mode == 0) {
-			ImGui::ColorEdit3("Color", &color.x);
 			ImGui::SliderFloat3("Light Pos", &ligthDir.x, -20, +20);
 			ImGui::SliderFloat("Ambient Intensity", &ambientI, +0, +1);
 			ImGui::SliderFloat("Difuse Intensity", &diffuseI, +0, +1);
 			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
 		}
 		if (mode == 1) {
-			ImGui::ColorEdit3("Color", &color.x);
 			ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
 			ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
+			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
 		}
 		if (mode == 2) {
-			ImGui::ColorEdit3("Color", &color.x);
 			ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
 			ImGui::SliderFloat3("Light Pointing", &pointingLight.x, -20, +20);
 			ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
 			ImGui::SliderFloat("Angle", &angle, +1, +180);
 			ImGui::SliderFloat("Fade Amount", &fadeAmount, +1, +30);
+			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
 		}
 
-		if (ZoomEffect == true) {
+		//if (ZoomEffect == true) {
 
-			//Increase the distance 
-			RV::panv[2] -= 0.5f;
-			//Calculate the fov acording to the distance
-			RV::FOV = 2 * atan2(10.0f, 2 * abs(RV::panv[2]));
+		//	//Increase the distance 
+		//	RV::panv[2] -= 0.5f;
+		//	//Calculate the fov acording to the distance
+		//	RV::FOV = 2 * atan2(10.0f, 2 * abs(RV::panv[2]));
 
-			//Finish the animation when the camera gets too far
-			if (RV::panv[2] < -90.0f)
-			{
-				ZoomEffect = false;
-				RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
-				RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
-				RV::FOV = glm::radians(65.0f);
-			}
+		//	//Finish the animation when the camera gets too far
+		//	if (RV::panv[2] < -90.0f)
+		//	{
+		//		ZoomEffect = false;
+		//		RV::panv[0] = { 0.f }; RV::panv[1] = { -5.f }; RV::panv[2] = { -15.f };
+		//		RV::rota[0] = { 0.f }; RV::rota[1] = { 0.f };
+		//		RV::FOV = glm::radians(65.0f);
+		//	}
 
-		}
+		//}
 	}
 
 	ImGui::End();

@@ -1,9 +1,67 @@
 #version 330
 in vec4 v_wPos;
 in vec2 v_UV;
+in vec4 v_Normal;
 out vec4 out_Color;
 uniform sampler2D Texture;
+uniform vec4 ambientColor;
+uniform float ambientColorI;
+uniform float diffuseIntensity;
+uniform float lightIntensity;
+uniform float mode;
+uniform float cuttOff;
+uniform vec4 lightPos;
+uniform vec4 lightColor;
+uniform vec4 CameraPos;
+uniform vec4 lightPointing;
+uniform vec4 lightDir;
+uniform float outterCuttOff;
+float PI = 3.14159265f;
 void main() {
-vec4 textureColor = texture(Texture,v_UV);
-out_Color = textureColor;
+//Directional light
+if(mode == 0) {
+	vec4 nLightDir = normalize(lightDir);
+	vec4 viewVec = normalize(CameraPos - v_wPos) ;
+	vec4 halfVec = (viewVec + nLightDir)/2.0 ;
+	vec4 reflectVec = reflect(-nLightDir,v_Normal) ;
+	vec4 ambientComp = ambientColor * ambientColorI ;
+	vec4 specularComp = lightColor * pow(clamp(dot(reflectVec, viewVec),0,1.0), 32);
+	vec4 diffuseComp = lightColor * diffuseIntensity * clamp(dot(nLightDir, v_Normal),0, 1.0) ;
+	vec4 textureColor = texture(Texture,v_UV);
+	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
+	out_Color = vec4(rgb, 1.0);
+//Point light
+}else if(mode == 1){
+	vec4 viewVec = normalize(CameraPos - v_wPos) ;
+	vec4 lightDir =  normalize(lightPos - v_wPos);
+	vec4 halfVec = (viewVec + lightDir)/2.0 ;
+	vec4 reflectVec = reflect(-lightDir,v_Normal) ;
+	float d = distance(lightPos,v_wPos) ;
+	float especularIntensity = lightIntensity / (4 * PI * pow(d,2)) ;
+	vec4 ambientComp = ambientColor * especularIntensity ;
+	vec4 specularComp = lightColor * pow(clamp(dot(reflectVec, viewVec),0,1.0), 32) * especularIntensity ;
+	vec4 diffuseComp = lightColor * especularIntensity * clamp(dot(lightDir, v_Normal),0, 1.0);
+	vec4 textureColor = texture(Texture,v_UV);
+	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
+	out_Color = vec4(rgb, 1.0);
+//Spotlight
+}else{
+	vec4 viewVec = normalize(CameraPos - v_wPos) ;
+	vec4 lightDir =  normalize(lightPos - v_wPos);
+	float t = dot(lightDir, normalize(-lightPointing));
+	float epsilon = cuttOff - outterCuttOff;
+	float intensity = clamp((t - outterCuttOff) / epsilon, 0.0 , 1.0);
+	vec4 halfVec = (viewVec + lightDir)/2.0 ;
+	vec4 reflectVec = reflect(-lightDir,v_Normal) ;
+	float d = distance(lightPos,v_wPos) ;
+	float especularIntensity = lightIntensity / (4 * PI * pow(d,2)) ;
+	vec4 ambientComp = ambientColor * especularIntensity * intensity;
+	vec4 specularComp = lightColor * pow(clamp(dot(reflectVec, viewVec),0,1.0), 32) * especularIntensity;
+	vec4 diffuseComp = lightColor * especularIntensity * clamp(dot(lightDir, v_Normal),0, 1.0);
+	specularComp *= intensity;
+	diffuseComp *= intensity;
+	vec4 textureColor = texture(Texture,v_UV);
+	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
+	out_Color = vec4(rgb, 1.0);
+}
 }
