@@ -239,6 +239,7 @@ float diffuseI = 0.5f;
 glm::vec4 ambientColor = glm::vec4(1, 1, 1, 0);
 double timer;
 bool explosion = false;
+int ex = 1;
 
 //Dolly Effect
 //Variables needed to do the dolly effect
@@ -430,9 +431,9 @@ public:
 			glBindTexture(GL_TEXTURE_2D, textureID);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			stbi_image_free(data);
 			glDeleteTextures(0, &textureID);
@@ -676,7 +677,18 @@ void GLrender(float dt) {
 
 	cameraPos = glm::inverse(RV::_modelView) * glm::vec4(0,0,0,1);
 	Axis::drawAxis();
-	car.drawModel(&phongShader, timer);
+	switch (ex)
+	{
+	case 0:
+		Billboard::drawBillboard();
+		break;
+	case 1:
+		car.drawModel(&phongShader, timer);
+		break;
+	default:
+		break;
+	}
+
 	ImGui::Render();
 }
 
@@ -686,29 +698,54 @@ void GUI() {
 
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::SliderInt("Exercice", &ex, 0, 1);
 		ImGui::Checkbox("Explosion", &explosion);
+		if (ex == 1) {
+			if (ImGui::CollapsingHeader("Phong")) {
+				if (ImGui::Button("Direccional Light"))
+				{
+					mode = 0;
+				}
+				if (ImGui::Button("Point Light"))
+				{
 
-		if (ImGui::Button("Direccional Light"))
-		{
-			mode = 0;
-		}
-		if (ImGui::Button("Point Light"))
-		{
+					mode = 1;
+				}
+				if (ImGui::Button("Spotlight"))
+				{
+					mode = 2;
+					lightPos.x = -5.0f;
+					lightPos.y = 5.0f;
+					lightPos.z = 3.0f;
+					pointingLight.x = 4.7f;
+					pointingLight.y = -2.9f;
+					pointingLight.z = -3.0f;
+					lightIntesity = 130.0f;
 
-			mode = 1;
-		}
-		if (ImGui::Button("Spotlight"))
-		{
-			mode = 2;
-			lightPos.x = -5.0f;
-			lightPos.y = 5.0f;
-			lightPos.z = 3.0f;
-			pointingLight.x = 4.7f;
-			pointingLight.y = -2.9f;
-			pointingLight.z = -3.0f;
-			lightIntesity = 130.0f;
+				}
+				if (mode == 0) {
+					ImGui::SliderFloat3("Light Pos", &ligthDir.x, -20, +20);
+					ImGui::SliderFloat("Ambient Intensity", &ambientI, +0, +1);
+					ImGui::SliderFloat("Difuse Intensity", &diffuseI, +0, +1);
+					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+				}
+				if (mode == 1) {
+					ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
+					ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
+					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+				}
+				if (mode == 2) {
+					ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
+					ImGui::SliderFloat3("Light Pointing", &pointingLight.x, -20, +20);
+					ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
+					ImGui::SliderFloat("Angle", &angle, +1, +180);
+					ImGui::SliderFloat("Fade Amount", &fadeAmount, +1, +30);
+					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+				}
+			}
 
 		}
+
 		//Inicialize Dolly Effect
 		//if (ImGui::Button("Inversed Dolly effect"))
 		//{
@@ -726,25 +763,7 @@ void GUI() {
 		//		RV::FOV = glm::radians(65.0f);
 		//	}
 		//}
-		if (mode == 0) {
-			ImGui::SliderFloat3("Light Pos", &ligthDir.x, -20, +20);
-			ImGui::SliderFloat("Ambient Intensity", &ambientI, +0, +1);
-			ImGui::SliderFloat("Difuse Intensity", &diffuseI, +0, +1);
-			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-		}
-		if (mode == 1) {
-			ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
-			ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
-			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-		}
-		if (mode == 2) {
-			ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
-			ImGui::SliderFloat3("Light Pointing", &pointingLight.x, -20, +20);
-			ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
-			ImGui::SliderFloat("Angle", &angle, +1, +180);
-			ImGui::SliderFloat("Fade Amount", &fadeAmount, +1, +30);
-			ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-		}
+
 
 		//if (ZoomEffect == true) {
 
