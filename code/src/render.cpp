@@ -719,7 +719,10 @@ void GUI() {
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::SliderInt("Exercises", &ex, 0, 1);
-		ImGui::Checkbox("Explosion", &explosion);
+		
+		if (ex == 1) {
+			ImGui::Checkbox("Explosion", &explosion);
+		}
 		if (ImGui::CollapsingHeader("Phong")) {
 			if (ImGui::Button("Direccional Light"))
 			{
