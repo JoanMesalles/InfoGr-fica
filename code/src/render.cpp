@@ -243,9 +243,6 @@ int ex = 1;
 
 //Dolly Effect
 //Variables needed to do the dolly effect
-bool ZoomEffect = false;
-float initZ;
-float angelFOV = 65.0f;
 
 float PI = 3.14159265359;
 
@@ -628,19 +625,19 @@ namespace Billboard {
 
 }
 
-Shader phongShader("res/vShaderExplosion.txt", "res/gShaderExplosion.txt", "res/fShaderExplosion.txt");
-Shader cubeShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
+Shader carShader("res/vShaderExplosion.txt", "res/gShaderExplosion.txt", "res/fShaderExplosion.txt");
+Shader cubeShader1("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 Shader grassShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 
-Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/Metal.png");
+Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &carShader, "res/Metal.png");
 glm::mat4 cuberotate = glm::rotate(glm::mat4(), glm::radians(90.f), glm::vec3(1, 0, 0));
 glm::mat4 cubemat = glm::scale(cuberotate, glm::vec3(3.0f, 3.0f, 3.0f));
-Model cube("res/cube.obj", cubemat, &cubeShader, "res/cubeTexture.png");
+Model cube("res/cube.obj", cubemat, &cubeShader1, "res/cubeTexture.png");
 //Floor
 glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.5f, 0.0f));
 glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
 glm::mat4 matcube1 = tcube1 * scube1;
-Model grass("res/Cube.obj", matcube1, &grassShader,  "res/grass.png");
+Model grass("res/cube.obj", matcube1, &grassShader,  "res/grass.png");
 
 
 void GLinit(int width, int height) {
@@ -651,11 +648,11 @@ void GLinit(int width, int height) {
 	glEnable(GL_DEPTH_TEST);
 
 	// Setup shaders & geometry
-	phongShader.SetUp();
+	carShader.SetUp();
 	Axis::setupAxis();
 	Billboard::setupBillboard();
 	car.setupModel();
-	cubeShader.SetUp();
+	cubeShader1.SetUp();
 	cube.setupModel();
 	grass.setupModel();
 	grassShader.SetUp();
@@ -670,9 +667,9 @@ void GLcleanup() {
 	grass.setupModel();
 	grassShader.CleanUp();
 	car.cleanupModel();
-	cubeShader.CleanUp();
+	cubeShader1.CleanUp();
 	cube.cleanupModel();
-	phongShader.CleanUp();
+	carShader.CleanUp();
 
 }
 
