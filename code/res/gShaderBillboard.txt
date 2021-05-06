@@ -2,18 +2,23 @@
 layout(points) in;
 layout(triangle_strip, max_vertices = 4) out;
 uniform mat4 mvpMat;
+uniform mat4 mv_Mat;
+uniform mat4 proj_Mat;
+uniform vec4 CameraPos;
 out vec2 v_UV;
 void main() {
-    gl_Position = gl_in[0].gl_Position + vec4(-4.0, 0.0, 0.0, 0.0);
+    vec3 CameraRight = vec3(mv_Mat[0][0], mv_Mat[1][0], mv_Mat[2][0]);
+    vec3 CameraUp = vec3(mv_Mat[0][1], mv_Mat[1][1], mv_Mat[2][1]);
+    gl_Position = mvpMat * vec4(gl_in[0].gl_Position.rgb + CameraRight * -4.0 + CameraUp * 0.0, 1.0);
     v_UV = vec2(0.0,1.0);	
     EmitVertex();   
-    gl_Position = gl_in[0].gl_Position + vec4( 4.0, 0.0, 0.0, 0.0); 
+    gl_Position = mvpMat * vec4(gl_in[0].gl_Position.rgb + CameraRight * 4.0 + CameraUp * 0.0, 1.0); 
     v_UV = vec2(1.0,1.0);
     EmitVertex();
-    gl_Position = gl_in[0].gl_Position + vec4(-4.0,  15.0, 0.0, 0.0);
+    gl_Position = mvpMat * vec4(gl_in[0].gl_Position.rgb + CameraRight * -4.0 + CameraUp * 15.0, 1.0);
     v_UV = vec2(0.0,0.0);
     EmitVertex();
-    gl_Position = gl_in[0].gl_Position + vec4( 4.0,  15.0, 0.0, 0.0); 
+    gl_Position = mvpMat * vec4(gl_in[0].gl_Position.rgb + CameraRight * 4.0 + CameraUp * 15.0, 1.0); 
     v_UV = vec2(1.0,0.0);
     EmitVertex();
     EndPrimitive(); 

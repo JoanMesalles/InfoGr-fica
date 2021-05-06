@@ -1,45 +1,21 @@
 #version 330
 layout(triangles) in;
-layout(triangle_strip, max_vertices = 6) out;
+layout(triangle_strip, max_vertices = 9) out;
 in vec4 vert_Normal[]; 
 in vec4 vert_wPos[];
 in vec2 vert_UV[];
 out vec4 v_Normal; 
 out vec4 v_wPos;
 out vec2 v_UV;
-float magnitude = 3.0;
-uniform float time;
-uniform bool explosion;
-vec4 offset = vec4(5.5, 0, 0, 0);
-vec3 GetNormal()
-{
-    vec3 a = vec3(gl_in[0].gl_Position) - vec3(gl_in[1].gl_Position);
-    vec3 b = vec3(gl_in[2].gl_Position) - vec3(gl_in[1].gl_Position);
-    return normalize(cross(a, b));
-}
+float magnitude = 0.0;
 void main()
 {
-	if(explosion){
-    		vec3 normal = GetNormal();	
-		for (int n = 0; n < 3; n++){
-                	vec3 direction = normal * ((sin(time) + 1.0) / 2.0) * magnitude; 
-			gl_Position = gl_in[n].gl_Position + vec4(direction, 0.0);
- 			v_Normal = vert_Normal[n];
-			v_wPos = vert_wPos[n];
-			v_UV = vert_UV[n];
-			EmitVertex();
-		}
-		EndPrimitive(); 
-
-	}else{
-		for (int n = 0; n < 3; n++){
-			gl_Position = gl_in[n].gl_Position;
- 			v_Normal = vert_Normal[n];
-			v_wPos = vert_wPos[n];
-			v_UV = vert_UV[n];
-			EmitVertex();
-		}
-		EndPrimitive(); 
+	for (int n = 0; n < 3; n++){
+		gl_Position = gl_in[n].gl_Position;
+ 		v_Normal = vert_Normal[n];
+		v_wPos = vert_wPos[n];
+		v_UV = vert_UV[n];
+		EmitVertex();
 	}
-
+	EndPrimitive(); 
 }

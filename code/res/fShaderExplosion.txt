@@ -16,6 +16,7 @@ uniform vec4 CameraPos;
 uniform vec4 lightPointing;
 uniform vec4 lightDir;
 uniform float outterCuttOff;
+uniform float time;
 float PI = 3.14159265f;
 void main() {
 //Directional light
@@ -29,7 +30,7 @@ if(mode == 0) {
 	vec4 diffuseComp = lightColor * diffuseIntensity * clamp(dot(nLightDir, v_Normal),0, 1.0) ;
 	vec4 textureColor = texture(Texture,v_UV);
 	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
-	out_Color = vec4(rgb, 1.0);
+	out_Color = vec4(rgb, 1.0 - (time/2.0));
 //Point light
 }else if(mode == 1){
 	vec4 viewVec = normalize(CameraPos - v_wPos) ;
@@ -43,7 +44,7 @@ if(mode == 0) {
 	vec4 diffuseComp = lightColor * especularIntensity * clamp(dot(lightDir, v_Normal),0, 1.0);
 	vec4 textureColor = texture(Texture,v_UV);
 	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
-	out_Color = vec4(rgb, 1.0);
+	out_Color = vec4(rgb, 1.0 - (time/2.0));
 //Spotlight
 }else{
 	vec4 viewVec = normalize(CameraPos - v_wPos) ;
@@ -62,6 +63,6 @@ if(mode == 0) {
 	diffuseComp *= intensity;
 	vec4 textureColor = texture(Texture,v_UV);
 	vec3 rgb = textureColor.rgb * (ambientComp.rgb + specularComp.rgb + diffuseComp.rgb);
-	out_Color = vec4(rgb, 1.0);
+	out_Color = vec4(rgb, 1.0 - (time/2.0));
 }
 }

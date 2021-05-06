@@ -547,7 +547,7 @@ public:
 	void updateModel(glm::mat4 transform) {
 		objMat = transform;
 	}
-	void drawModel(Shader* shader, double currentTime) {
+	void drawModel(double currentTime) {
 		glBindVertexArray(modelVao);
 		shader->Use();
 		shader->ActivateTexture();
@@ -583,8 +583,11 @@ namespace Billboard {
 	GLuint BillboardVbo[1];
 	Shader BillboardShader("res/vShaderBillboard.txt","res/gShaderBillboard.txt" ,"res/fShaderBillboard.txt");
 	float BillboardVerts[] = {
-	5.0, -1.5, 0.0,
-	-5.0, -1.5, 0.0
+	10.0, -2.0, 0.0,
+	-10.0, -2.0, 0.0,
+	5.0, -2.0, 10.0,
+	-5.0, -2.0, 10.0
+
 	};
 
 	void setupBillboard() {
@@ -593,7 +596,7 @@ namespace Billboard {
 		glGenBuffers(1, BillboardVbo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, BillboardVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3, &BillboardVerts, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 12, &BillboardVerts, GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(0);
 
@@ -614,6 +617,9 @@ namespace Billboard {
 		BillboardShader.Use();
 		BillboardShader.ActivateTexture();
 		BillboardShader.SetMatrix("mvpMat", RenderVars::_MVP);
+		BillboardShader.SetVector("CameraPos", cameraPos);
+		BillboardShader.SetMatrix("mv_Mat", RenderVars::_modelView);
+		BillboardShader.SetMatrix("proj_Mat", RV::_projection);
 		glDrawArrays(GL_POINTS, 0, 4);
 
 		BillboardShader.StopUse();
@@ -622,11 +628,19 @@ namespace Billboard {
 
 }
 
-Shader phongShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
+Shader phongShader("res/vShaderExplosion.txt", "res/gShaderExplosion.txt", "res/fShaderExplosion.txt");
 Shader cubeShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
+Shader grassShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 
 Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &phongShader, "res/Metal.png");
-Model cube("res/cube2.obj", glm::rotate(glm::mat4(), glm::radians(90.f), glm::vec3(1, 0, 0)), &cubeShader, "res/cubeTexture4.png");
+glm::mat4 cuberotate = glm::rotate(glm::mat4(), glm::radians(90.f), glm::vec3(1, 0, 0));
+glm::mat4 cubemat = glm::scale(cuberotate, glm::vec3(3.0f, 3.0f, 3.0f));
+Model cube("res/cube.obj", cubemat, &cubeShader, "res/cubeTexture.png");
+//Floor
+glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.5f, 0.0f));
+glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
+glm::mat4 matcube1 = tcube1 * scube1;
+Model grass("res/Cube.obj", matcube1, &grassShader,  "res/grass.png");
 
 
 void GLinit(int width, int height) {
@@ -643,6 +657,8 @@ void GLinit(int width, int height) {
 	car.setupModel();
 	cubeShader.SetUp();
 	cube.setupModel();
+	grass.setupModel();
+	grassShader.SetUp();
 
 	w = width;
 	h = height;
@@ -651,10 +667,13 @@ void GLinit(int width, int height) {
 void GLcleanup() {
 	Axis::cleanupAxis();
 	Billboard::cleanupBillboard();
+	grass.setupModel();
+	grassShader.CleanUp();
 	car.cleanupModel();
 	cubeShader.CleanUp();
 	cube.cleanupModel();
 	phongShader.CleanUp();
+
 }
 
 void GLrender(float dt) {
@@ -662,7 +681,7 @@ void GLrender(float dt) {
 		timer = 0;
 	}
 	else {
-		timer += dt;
+		timer += 0.01;
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -678,17 +697,13 @@ void GLrender(float dt) {
 	Axis::drawAxis();
 	switch (ex)
 	{
-	case 0: //Tree
-		//Billboard::drawBillboard();
-		cube.drawModel(&cubeShader, timer);
+	case 0: //Cubo
+		cube.drawModel(timer);
 		break;
 	case 1: //Car
 		Billboard::drawBillboard();
-		car.drawModel(&phongShader, timer);
-
-		break;
-	case 2: //Cube
-		//car.drawModel(&phongShader, timer);
+		grass.drawModel(timer);
+		car.drawModel(timer);
 		break;
 	default:
 		break;
@@ -703,55 +718,49 @@ void GUI() {
 
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::SliderInt("Exercice", &ex, 0, 1);
-		
-		if (ex == 1 || ex == 2) {
-			if (ex == 1) {
-				ImGui::Checkbox("Explosion", &explosion);
+		ImGui::SliderInt("Exercises", &ex, 0, 1);
+		ImGui::Checkbox("Explosion", &explosion);
+		if (ImGui::CollapsingHeader("Phong")) {
+			if (ImGui::Button("Direccional Light"))
+			{
+				mode = 0;
 			}
-			if (ImGui::CollapsingHeader("Phong")) {
-				if (ImGui::Button("Direccional Light"))
-				{
-					mode = 0;
-				}
-				if (ImGui::Button("Point Light"))
-				{
+			if (ImGui::Button("Point Light"))
+			{
 
-					mode = 1;
-				}
-				if (ImGui::Button("Spotlight"))
-				{
-					mode = 2;
-					lightPos.x = -5.0f;
-					lightPos.y = 5.0f;
-					lightPos.z = 3.0f;
-					pointingLight.x = 4.7f;
-					pointingLight.y = -2.9f;
-					pointingLight.z = -3.0f;
-					lightIntesity = 130.0f;
-
-				}
-				if (mode == 0) {
-					ImGui::SliderFloat3("Light Pos", &ligthDir.x, -20, +20);
-					ImGui::SliderFloat("Ambient Intensity", &ambientI, +0, +1);
-					ImGui::SliderFloat("Difuse Intensity", &diffuseI, +0, +1);
-					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-				}
-				if (mode == 1) {
-					ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
-					ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
-					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-				}
-				if (mode == 2) {
-					ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
-					ImGui::SliderFloat3("Light Pointing", &pointingLight.x, -20, +20);
-					ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
-					ImGui::SliderFloat("Angle", &angle, +1, +180);
-					ImGui::SliderFloat("Fade Amount", &fadeAmount, +1, +30);
-					ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
-				}
+				mode = 1;
 			}
+			if (ImGui::Button("Spotlight"))
+			{
+				mode = 2;
+				lightPos.x = -5.0f;
+				lightPos.y = 5.0f;
+				lightPos.z = 3.0f;
+				pointingLight.x = 4.7f;
+				pointingLight.y = -2.9f;
+				pointingLight.z = -3.0f;
+				lightIntesity = 130.0f;
 
+			}
+			if (mode == 0) {
+				ImGui::SliderFloat3("Light Pos", &ligthDir.x, -20, +20);
+				ImGui::SliderFloat("Ambient Intensity", &ambientI, +0, +1);
+				ImGui::SliderFloat("Difuse Intensity", &diffuseI, +0, +1);
+				ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+			}
+			if (mode == 1) {
+				ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
+				ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
+				ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+			}
+			if (mode == 2) {
+				ImGui::SliderFloat3("Light Pos", &lightPos.x, -20, +20);
+				ImGui::SliderFloat3("Light Pointing", &pointingLight.x, -20, +20);
+				ImGui::SliderFloat("Light Intensity", &lightIntesity, +1, +1000);
+				ImGui::SliderFloat("Angle", &angle, +1, +180);
+				ImGui::SliderFloat("Fade Amount", &fadeAmount, +1, +30);
+				ImGui::ColorEdit3("Ambient Colour", &ambientColor.x);
+			}
 		}
 	}
 
