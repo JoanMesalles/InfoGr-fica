@@ -49,8 +49,10 @@ namespace RenderVars {
 	float panv[3] = { 0.f, -5.f, -15.f };
 	float rota[2] = { 0.f, 0.f };
 }
+
 namespace RV = RenderVars;
 
+//Load Object Function
 extern bool loadOBJ(const char* path, std::vector < glm::vec3 >& out_vertices, std::vector < glm::vec2 >& out_uvs, std::vector < glm::vec3 >& out_normals);
 
 float w, h;
@@ -89,8 +91,6 @@ void GLmousecb(MouseEvent ev) {
 	RV::prevMouse.lastx = ev.posx;
 	RV::prevMouse.lasty = ev.posy;
 }
-
-//////////////////////////////////////////////////
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
 	GLuint shader = glCreateShader(shaderType);
@@ -237,25 +237,34 @@ float angle = 30.f;
 float ambientI = 0.5f;
 float diffuseI = 0.5f;
 glm::vec4 ambientColor = glm::vec4(1, 1, 1, 0);
-double timer;
-bool explosion = false;
-int ex = 1;
-
-//Dolly Effect
-//Variables needed to do the dolly effect
 
 float PI = 3.14159265359;
+//Exercice Variable
+bool explosion = false;
+int ex = 1;
+double timer;
 
+//Shader class that compiles shaders and atttaches a texture
 class Shader {
+	//Variables
+	//Type of shader depending on
+	//If the shader has geometry shader or not
 	int type;
+	//Texture ID
 	GLuint textureID;
+	//Shader strings
 	std::string vShaderCode, fShaderCode, gShaderCode;
+	//Format depending on transparency
 	GLenum format;
 public:
+	//Program ID
 	unsigned int programID;
 	Shader() {
 
 	}
+	//The constructors sets de type
+	//Reads the shaders
+	//Saves the code
 	Shader(const char* vertexPath, const char* fragmentPath)
 	{
 		type = 0;
@@ -331,7 +340,8 @@ public:
 		fShaderCode = fragmentCode.c_str();
 		gShaderCode = geomtryCode.c_str();
 	}
-
+	//Enables the shader
+	//So it can be used
 	void Use()
 	{
 		glUseProgram(programID);
@@ -339,13 +349,15 @@ public:
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
-
+	//Closes the shader
+	//Once everything is loaded and printed
 	void StopUse()
 	{
 		glDisable(GL_BLEND);
 		glUseProgram(0);
 	}
-
+	//Sets up the shader
+	//Creating the program and compiling the sahders separately
 	void SetUp()
 	{
 		if (type == 0) {
@@ -385,7 +397,9 @@ public:
 		}
 
 	}
-
+	//Stting parameters
+	//All of this functions take a name and a parameter
+	//And set the uniform
 	void SetBool(const std::string& name, bool value)
 	{
 		glUniform1i(glGetUniformLocation(programID, name.c_str()), (int)value);
@@ -410,7 +424,7 @@ public:
 	{
 		glUniform4f(glGetUniformLocation(programID, name.c_str()), value.x, value.y, value.z, value.w);
 	}
-
+	//Sets the texture to be printed
 	void SetTexture(const char* texturePath)
 	{
 		//Texture
@@ -441,18 +455,20 @@ public:
 		}
 
 	}
-
+	//Activates the use of the texture
 	void ActivateTexture()
 	{
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 		glUniform1i(glGetUniformLocation(programID, "Texture"), 0);
 	}
-
+	//This is just for good practice
+	//I don't really know what to do here
 	void CleanUp()
 	{
 	}
-
+	//Function that compiles the shader
+	//This is taken from the base code we were given
 	GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name)
 	{
 		GLuint shaderp = glCreateShader(shaderType);
@@ -471,7 +487,8 @@ public:
 		}
 		return shaderp;
 	}
-
+	//Function that links the program
+	//This is taken from the base code we were given
 	void linkProgram(GLuint program)
 	{
 		glLinkProgram(program);
@@ -488,19 +505,26 @@ public:
 };
 
 
-////////// Model class
+// Model class
 class Model {
+	//Variables
+	//Vao and Vbo
 	GLuint modelVao;
 	GLuint modelVbo[3];
+	//Shader of the model
 	Shader* shader;
+	//Matrices
 	glm::mat4 objMat;
 	glm::mat4 normalMat;
+	//Vecs to store model info
 	std::vector< glm::vec3 > verticesModel;
 	std::vector< glm::vec2 > uvsModel;
 	std::vector< glm::vec3 > normalsModel;
+	//Model and texture Path
 	char* path;
 	char* texturePath;
 public:
+	//The constructor initialices the main variables
 	Model(char* _path, glm::mat4 _mat, Shader* _shader, char* _texturePath) {
 		path = _path;
 		objMat = _mat;
@@ -508,7 +532,8 @@ public:
 		shader = _shader;
 		texturePath = _texturePath;
 	}
-
+	//Function that sets up the model buffers
+	//And loads the model form .obj
 	void setupModel() {
 		bool res = loadOBJ(path, verticesModel, uvsModel, normalsModel);
 
@@ -537,13 +562,17 @@ public:
 
 
 	}
+	//Clean Up
 	void cleanupModel() {
 		glDeleteBuffers(3, modelVbo);
 		glDeleteVertexArrays(1, &modelVao);
 	}
+	//Updates the object Matrix
 	void updateModel(glm::mat4 transform) {
 		objMat = transform;
 	}
+	//Function that draws the model
+	//Sets the parameters in the shader
 	void drawModel(double currentTime) {
 		glBindVertexArray(modelVao);
 		shader->Use();
@@ -575,6 +604,10 @@ public:
 	}
 };
 
+//Billboard
+//This namespace works basically the same as the model class
+//But instead of loading and .obj
+//It manually reads the vertex position from which it creates the billboard
 namespace Billboard {
 	GLuint BillboardVao;
 	GLuint BillboardVbo[1];
@@ -584,7 +617,6 @@ namespace Billboard {
 	-10.0, -2.0, 0.0,
 	5.0, -2.0, 10.0,
 	-5.0, -2.0, 10.0
-
 	};
 
 	void setupBillboard() {
@@ -625,15 +657,16 @@ namespace Billboard {
 
 }
 
+//Shaders init
 Shader carShader("res/vShaderExplosion.txt", "res/gShaderExplosion.txt", "res/fShaderExplosion.txt");
 Shader cubeShader1("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 Shader grassShader("res/vShader.txt", "res/gShader.txt", "res/fShader.txt");
 
+//Models initi
 Model car("res/car.obj", glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 2.0f)), &carShader, "res/Metal.png");
 glm::mat4 cuberotate = glm::rotate(glm::mat4(), glm::radians(90.f), glm::vec3(1, 0, 0));
 glm::mat4 cubemat = glm::scale(cuberotate, glm::vec3(3.0f, 3.0f, 3.0f));
 Model cube("res/cube.obj", cubemat, &cubeShader1, "res/cubeTexture.png");
-//Floor
 glm::mat4 tcube1 = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.5f, 0.0f));
 glm::mat4 scube1 = glm::scale(glm::mat4(), glm::vec3(15.0f, 0.5f, 15.0f));
 glm::mat4 matcube1 = tcube1 * scube1;
@@ -648,12 +681,17 @@ void GLinit(int width, int height) {
 	glEnable(GL_DEPTH_TEST);
 
 	// Setup shaders & geometry
+	
 	carShader.SetUp();
+	car.setupModel();
+
 	Axis::setupAxis();
 	Billboard::setupBillboard();
-	car.setupModel();
+
+
 	cubeShader1.SetUp();
 	cube.setupModel();
+
 	grass.setupModel();
 	grassShader.SetUp();
 
@@ -662,14 +700,21 @@ void GLinit(int width, int height) {
 }
 
 void GLcleanup() {
+	// Cleanup shaders & geometry
+
 	Axis::cleanupAxis();
 	Billboard::cleanupBillboard();
+
 	grass.setupModel();
 	grassShader.CleanUp();
+
 	car.cleanupModel();
-	cubeShader1.CleanUp();
-	cube.cleanupModel();
 	carShader.CleanUp();
+
+
+	cube.cleanupModel();
+	cubeShader1.CleanUp();
+
 
 }
 
@@ -694,10 +739,10 @@ void GLrender(float dt) {
 	Axis::drawAxis();
 	switch (ex)
 	{
-	case 0: //Cubo
+	case 0: //Cube
 		cube.drawModel(timer);
 		break;
-	case 1: //Car
+	case 1: //Rest
 		Billboard::drawBillboard();
 		grass.drawModel(timer);
 		car.drawModel(timer);
