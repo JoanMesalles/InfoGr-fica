@@ -1,4 +1,3 @@
-//#include "Shader.h"
 #include <cstdio>
 #include <cassert>
 #include <stdio.h>
@@ -237,8 +236,8 @@ float angle = 30.f;
 float ambientI = 0.5f;
 float diffuseI = 0.5f;
 glm::vec4 ambientColor = glm::vec4(1, 1, 1, 0);
-
 float PI = 3.14159265359;
+
 //Exercice Variable
 bool explosion = false;
 int ex = 1;
